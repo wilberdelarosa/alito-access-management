@@ -86,11 +86,14 @@
                     <input id="globalSearch" type="text" placeholder="Buscar por Nombre, ID, Cargo, Empresa..." class="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-brand-500 focus:border-brand-500 sm:text-sm">
                 </div>
 
-                <div class="flex items-center gap-2">
-                     <button id="manageBtn" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        Administrar
+                <div class="flex items-center gap-3">
+                    <button id="addEmployeeBtn" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Nuevo Empleado
                     </button>
-                    <!--<button onclick="resetSystem()" class="text-xs text-slate-400 hover:text-rose-500">Reset</button>-->
+                    <button id="manageBtn" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Administrar Todo
+                    </button>
                 </div>
             </div>
         </div>
@@ -289,7 +292,15 @@
                                 <form id="empForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input id="empId" placeholder="ID" class="border rounded p-2 text-sm bg-slate-50">
                                     <input id="empName" placeholder="Nombre Completo" class="border rounded p-2 text-sm">
-                                    <input id="empCompany" placeholder="Empresa" class="border rounded p-2 text-sm">
+                                    <div class="relative">
+                                        <select id="empCompany" class="w-full border rounded p-2 text-sm">
+                                            <option value="">Seleccionar Empresa...</option>
+                                            <option value="ALITO EIRL">ALITO EIRL</option>
+                                            <option value="ALITO GROUP SRL">ALITO GROUP SRL</option>
+                                            <option value="__new__">➕ Agregar Nueva...</option>
+                                        </select>
+                                        <input id="empCompanyNew" placeholder="Nueva Empresa" class="hidden w-full border rounded p-2 text-sm border-teal-500 mt-2">
+                                    </div>
                                     <input id="empDoc" placeholder="Cédula / Documento" class="border rounded p-2 text-sm">
                                     <input id="empJob" placeholder="Cargo / Puesto (Opcional)" class="border rounded p-2 text-sm md:col-span-2">
                                     

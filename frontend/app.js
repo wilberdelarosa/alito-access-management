@@ -6,6 +6,7 @@ let requests = [];
 const views = ['dashboard', 'pc_view', 'cc_view', 'excluded_view', 'requests_view'];
 const globalSearch = document.getElementById('globalSearch');
 const manageBtn = document.getElementById('manageBtn');
+const addEmployeeBtn = document.getElementById('addEmployeeBtn');
 
 // Dashboard Counters
 const countPC = document.getElementById('countPC');
@@ -33,6 +34,7 @@ const empForm = document.getElementById('empForm');
 const empIdInput = document.getElementById('empId');
 const empNameInput = document.getElementById('empName');
 const empCompanyInput = document.getElementById('empCompany');
+const empCompanyNewInput = document.getElementById('empCompanyNew');
 const empDocInput = document.getElementById('empDoc');
 const empJobInput = document.getElementById('empJob');
 const empNotesInput = document.getElementById('empNotes');
@@ -414,16 +416,156 @@ adminSearch.addEventListener('input', renderAdminList);
 
 // Event Listeners for main UI
 globalSearch.addEventListener('input', refreshAllViews);
-manageBtn.addEventListener('click', () => {
+
+// Add Employee Button (Quick Access)
+addEmployeeBtn.addEventListener('click', () => {
   empForm.reset();
   empIdInput.removeAttribute('disabled');
+  empCompanyNewInput.classList.add('hidden');
   adminPanel.classList.remove('hidden');
   renderAdminList();
 });
+
+// Manage Button (Full Admin)
+manageBtn.addEventListener('click', () => {
+  empForm.reset();
+  empIdInput.removeAttribute('disabled');
+  empCompanyNewInput.classList.add('hidden');
+  adminPanel.classList.remove('hidden');
+  renderAdminList();
+});
+
+// Company Dropdown Logic
+empCompanyInput.addEventListener('change', () => {
+  if (empCompanyInput.value === '__new__') {
+    empCompanyNewInput.classList.remove('hidden');
+    empCompanyNewInput.focus();
+  } else {
+    empCompanyNewInput.classList.add('hidden');
+  }
+});
+
 document.getElementById('closeAdmin').addEventListener('click', () => adminPanel.classList.add('hidden'));
 document.getElementById('clearEmp').addEventListener('click', () => {
   empForm.reset();
   empIdInput.removeAttribute('disabled');
+  empCompanyNewInput.classList.add('hidden');
+});
+
+
+// ========== EMPLOYEE MANAGEMENT FUNCTIONS ==========
+
+// Edit Employee
+window.editEmp = function (id) {
+  const emp = employees.find(e => e.id === id);
+  if (!emp) return;
+
+  const state = normalizeState(id);
+
+  // Fill basic data
+  empIdInput.value = emp.id;
+  empIdInput.setAttribute('disabled', 'true');
+  empNameInput.value = emp.name || '';
+
+  // Handle company
+  const companyExists = ['ALITO EIRL', 'ALITO GROUP SRL'].includes(emp.company);
+  if (companyExists) {
+    empCompanyInput.value = emp.company;
+    empCompanyNewInput.classList.add('hidden');
+  } else {
+    empCompanyInput.value = '__new__';
+    empCompanyNewInput.classList.remove('hidden');
+    empCompanyNewInput.value = emp.company || '';
+  }
+
+  empDocInput.value = emp.docId || '';
+  empJobInput.value = emp.jobTitle || '';
+  empNotesInput.value = emp.notes || '';
+  checkExcluded.checked = state.excluded || false;
+
+  // Fill pass data
+  pcStatus.value = state.pc_status || 'NONE';
+  pcExpires.value = state.pc_expires || '';
+  pcRequested.value = state.pc_requested || '';
+
+  ccStatus.value = state.cc_status || 'NONE';
+  ccExpires.value = state.cc_expires || '';
+  ccRequested.value = state.cc_requested || '';
+};
+
+// Save Employee
+empForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const id = empIdInput.value.trim();
+  const name = empNameInput.value.trim();
+
+  // Determine company
+  let company = empCompanyInput.value;
+  if (company === '__new__') {
+    company = empCompanyNewInput.value.trim();
+    if (!company) {
+      alert('Ingresa el nombre de la empresa nueva');
+      empCompanyNewInput.focus();
+      return;
+    }
+    // Add to dropdown for future use
+    const newOption = document.createElement('option');
+    newOption.value = company;
+    newOption.textContent = company;
+    empCompanyInput.insertBefore(newOption, empCompanyInput.lastElementChild);
+  }
+
+  if (!id || !name || !company) {
+    alert('ID, Nombre y Empresa son obligatorios');
+    return;
+  }
+
+  const employee = {
+    id,
+    name,
+    company,
+    docId: empDocInput.value.trim(),
+    jobTitle: empJobInput.value.trim(),
+    notes: empNotesInput.value.trim()
+  };
+
+  const state = {
+    excluded: checkExcluded.checked,
+    pc_status: pcStatus.value,
+    pc_expires: pcExpires.value,
+    pc_requested: pcRequested.value,
+    cc_status: ccStatus.value,
+    cc_expires: ccExpires.value,
+    cc_requested: ccRequested.value
+  };
+
+  try {
+    // Save employee
+    await fetch('/api/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(employee)
+    });
+
+    // Save state
+    await fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, state })
+    });
+
+    await fetchInitialData();
+    renderAdminList();
+    empForm.reset();
+    empIdInput.removeAttribute('disabled');
+    empCompanyNewInput.classList.add('hidden');
+
+    alert('✅ Empleado guardado exitosamente');
+  } catch (err) {
+    console.error(err);
+    alert('❌ Error al guardar');
+  }
 });
 
 
@@ -643,6 +785,9 @@ async function loadSuggestions(type) {
 
   document.getElementById('countNoPasses').textContent = currentSuggestions.noPasses.length;
   document.getElementById('countExpiring').textContent = currentSuggestions.expiring.length;
+
+  // Initialize first tab
+  switchSuggestionTab('noPasses');
 }
 
 function renderEmployeeCheckboxes(container, list) {
