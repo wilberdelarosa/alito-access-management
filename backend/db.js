@@ -5,6 +5,16 @@ const dbPath = path.join(__dirname, 'alito.db');
 
 const db = new sqlite3.Database(dbPath);
 
+// Supabase sync
+const {
+  syncSingleEmployee,
+  syncSingleState,
+  syncSingleRequest,
+  deleteEmployeeFromSupabase,
+  deleteRequestFromSupabase,
+  initSupabaseTables
+} = require('./supabase');
+
 // Empleados seed (mismo listado original)
 const seedEmployees = [
   { id: "E01", company: "ALITO EIRL", name: "YOHANDER DE LA ROSA DE LA ROSA", docId: "402-4136846-9" },
@@ -114,8 +124,9 @@ function getAllStates() {
 function upsertState(id, state) {
   return new Promise((resolve, reject) => {
     const stateStr = JSON.stringify(state);
-    db.run('INSERT INTO states(id,state) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state', [id, stateStr], function (err) {
+    db.run('INSERT INTO states(id,state) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state', [id, stateStr], async function (err) {
       if (err) return reject(err);
+      await syncSingleState(id, state); // Sync to Supabase
       resolve();
     });
   });
@@ -151,8 +162,9 @@ function getEmployeeById(id) {
 function upsertEmployee(emp) {
   return new Promise((resolve, reject) => {
     db.run('INSERT INTO employees(id,name,company,docId,jobTitle,notes) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, company=excluded.company, docId=excluded.docId, jobTitle=excluded.jobTitle, notes=excluded.notes',
-      [emp.id, emp.name, emp.company, emp.docId, emp.jobTitle, emp.notes], function (err) {
+      [emp.id, emp.name, emp.company, emp.docId, emp.jobTitle, emp.notes], async function (err) {
         if (err) return reject(err);
+        await syncSingleEmployee(emp); // Sync to Supabase
         resolve();
       });
   });
@@ -160,8 +172,9 @@ function upsertEmployee(emp) {
 
 function deleteEmployee(id) {
   return new Promise((resolve, reject) => {
-    db.run('DELETE FROM employees WHERE id = ?', [id], function (err) {
+    db.run('DELETE FROM employees WHERE id = ?', [id], async function (err) {
       if (err) return reject(err);
+      await deleteEmployeeFromSupabase(id); // Sync to Supabase
       resolve();
     });
   });
@@ -218,8 +231,10 @@ function createRequest(req) {
     db.run(
       'INSERT INTO requests(id, type, status, employeeIds, createdAt, updatedAt, notes, createdBy) VALUES(?,?,?,?,?,?,?,?)',
       [id, req.type, req.status, employeeIds, createdAt, createdAt, req.notes || '', req.createdBy || 'system'],
-      function (err) {
+      async function (err) {
         if (err) return reject(err);
+        const fullReq = { ...req, id, employeeIds: req.employeeIds, createdAt, updatedAt: createdAt };
+        await syncSingleRequest(fullReq); // Sync to Supabase
         resolve({ id });
       }
     );
@@ -245,8 +260,9 @@ function updateRequest(id, updates) {
     db.run(
       `UPDATE requests SET ${fields.join(', ')} WHERE id = ?`,
       values,
-      function (err) {
+      async function (err) {
         if (err) return reject(err);
+        await syncSingleRequest({ id, ...updates, updatedAt }); // Sync to Supabase
         resolve();
       }
     );
@@ -255,8 +271,9 @@ function updateRequest(id, updates) {
 
 function deleteRequest(id) {
   return new Promise((resolve, reject) => {
-    db.run('DELETE FROM requests WHERE id = ?', [id], function (err) {
+    db.run('DELETE FROM requests WHERE id = ?', [id], async function (err) {
       if (err) return reject(err);
+      await deleteRequestFromSupabase(id); // Sync to Supabase
       resolve();
     });
   });
