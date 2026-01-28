@@ -455,6 +455,23 @@ document.getElementById('clearEmp').addEventListener('click', () => {
 
 // ========== EMPLOYEE MANAGEMENT FUNCTIONS ==========
 
+// Generate next employee ID
+function generateNextEmployeeId() {
+  if (employees.length === 0) return 'E001';
+
+  // Extract numeric part from existing IDs
+  const nums = employees
+    .map(e => e.id)
+    .filter(id => id.startsWith('E'))
+    .map(id => parseInt(id.substring(1)))
+    .filter(n => !isNaN(n));
+
+  const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+  const nextNum = maxNum + 1;
+
+  return `E${String(nextNum).padStart(3, '0')}`;
+}
+
 // Edit Employee
 window.editEmp = function (id) {
   const emp = employees.find(e => e.id === id);
@@ -497,7 +514,15 @@ window.editEmp = function (id) {
 empForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const id = empIdInput.value.trim();
+  // Auto-generate ID if creating new employee
+  let id = empIdInput.value.trim();
+  const isNewEmployee = !empIdInput.hasAttribute('disabled');
+
+  if (isNewEmployee) {
+    id = generateNextEmployeeId();
+    empIdInput.value = id;
+  }
+
   const name = empNameInput.value.trim();
 
   // Determine company
@@ -505,7 +530,7 @@ empForm.addEventListener('submit', async (e) => {
   if (company === '__new__') {
     company = empCompanyNewInput.value.trim();
     if (!company) {
-      alert('Ingresa el nombre de la empresa nueva');
+      alert('⚠️ Ingresa el nombre de la empresa nueva');
       empCompanyNewInput.focus();
       return;
     }
@@ -514,10 +539,12 @@ empForm.addEventListener('submit', async (e) => {
     newOption.value = company;
     newOption.textContent = company;
     empCompanyInput.insertBefore(newOption, empCompanyInput.lastElementChild);
+    empCompanyInput.value = company;
   }
 
-  if (!id || !name || !company) {
-    alert('ID, Nombre y Empresa son obligatorios');
+  if (!name || !company) {
+    alert('⚠️ Nombre y Empresa son obligatorios');
+    if (!name) empNameInput.focus();
     return;
   }
 
@@ -555,16 +582,25 @@ empForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({ id, state })
     });
 
+    // Reload data
     await fetchInitialData();
-    renderAdminList();
+
+    // Reset form
     empForm.reset();
     empIdInput.removeAttribute('disabled');
+    empIdInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
     empCompanyNewInput.classList.add('hidden');
 
-    alert('✅ Empleado guardado exitosamente');
+    // Update all views
+    renderAdminList();
+
+    // Success message
+    const action = isNewEmployee ? 'creado' : 'actualizado';
+    alert(`✅ Empleado "${name}" (${id}) ${action} exitosamente`);
+
   } catch (err) {
     console.error(err);
-    alert('❌ Error al guardar');
+    alert('❌ Error al guardar empleado');
   }
 });
 
